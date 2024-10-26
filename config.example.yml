@@ -1,0 +1,5 @@
+environment: production
+cycle_interval: 1m
+ping_server_host: http://localhost:3001
+auth_token:
+mongodb: mongodb://127.0.0.1:27017/mcstatus
