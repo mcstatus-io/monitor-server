@@ -41,6 +41,25 @@ func StartRunner() {
 
 					continue
 				}
+
+				if err := db.UpsertServerStatistics(
+					bson.M{
+						"server":    server.ID,
+						"timestamp": time.Now().UTC().Truncate(time.Hour),
+					},
+					bson.M{
+						"$push": bson.M{
+							"playerCount": status.Players.Online,
+						},
+						"$setOnInsert": bson.M{
+							"_id": RandomHexString(16),
+						},
+					},
+				); err != nil {
+					log.Println(err)
+
+					continue
+				}
 			} else {
 				if err = db.UpdateUniqueServerByID(server.ID, bson.M{
 					"$inc": bson.M{

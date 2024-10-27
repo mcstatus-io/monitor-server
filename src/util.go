@@ -48,3 +48,8 @@ func RandomHexString(byteLength int) string {
 
 	return hex.EncodeToString(data)
 }
+
+// PointerOf returns the pointer of the value.
+func PointerOf[T any](v T) *T {
+	return &v
+}

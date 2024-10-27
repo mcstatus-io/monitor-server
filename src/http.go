@@ -10,8 +10,8 @@ import (
 type StatusResponse struct {
 	Online  bool `json:"online"`
 	Players struct {
-		Online uint `json:"online"`
-		Max    uint `json:"max"`
+		Online uint64 `json:"online"`
+		Max    uint64 `json:"max"`
 	} `json:"players"`
 	Icon *string `json:"icon"`
 }

@@ -12,42 +12,13 @@ import (
 )
 
 var (
-	CollectionUsers         string = "users"
-	CollectionSessions      string = "sessions"
-	CollectionApplications  string = "applications"
-	CollectionServers       string = "servers"
-	CollectionUniqueServers string = "unique_servers"
-	CollectionTokens        string = "tokens"
-	CollectionRequestLog    string = "request_log"
+	CollectionUniqueServers    string = "unique_servers"
+	CollectionServerStatistics string = "server_statistics"
 )
 
 type MongoDB struct {
 	Client   *mongo.Client
 	Database *mongo.Database
-}
-
-type User struct {
-	ID        string    `bson:"_id" json:"id"`
-	Email     string    `bson:"email" json:"email"`
-	Password  string    `bson:"password" json:"-"`
-	Type      string    `bson:"type" json:"type"`
-	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
-}
-
-type Session struct {
-	ID        string    `bson:"_id" json:"id"`
-	User      string    `bson:"user" json:"user"`
-	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
-}
-
-type Application struct {
-	ID               string    `bson:"_id" json:"id"`
-	Name             string    `bson:"name" json:"name"`
-	ShortDescription string    `bson:"shortDescription" json:"shortDescription"`
-	User             string    `bson:"user" json:"user"`
-	Token            string    `bson:"token" json:"token"`
-	RequestCount     uint64    `bson:"requestCount" json:"requestCount"`
-	CreatedAt        time.Time `bson:"createdAt" json:"createdAt"`
 }
 
 type UniqueServer struct {
@@ -59,40 +30,6 @@ type UniqueServer struct {
 	OnlineCount uint64    `bson:"onlineCount" json:"onlineCount"`
 	TotalCount  uint64    `bson:"totalCount" json:"totalCount"`
 	CreatedAt   time.Time `bson:"createdAt" json:"createdAt"`
-}
-
-type Server struct {
-	ID        string    `bson:"_id" json:"id"`
-	Name      string    `bson:"name" json:"name"`
-	User      string    `bson:"user" json:"user"`
-	ServerID  string    `bson:"serverID" json:"serverID"`
-	CreatedAt time.Time `bson:"createdAt" json:"createdAt"`
-}
-
-type FormattedServer struct {
-	ID        string        `bson:"_id" json:"id"`
-	Name      string        `bson:"name" json:"name"`
-	User      string        `bson:"user" json:"user"`
-	Server    *UniqueServer `bson:"server" json:"server"`
-	CreatedAt time.Time     `bson:"createdAt" json:"createdAt"`
-}
-
-type Token struct {
-	ID           string     `bson:"_id" json:"id"`
-	Name         string     `bson:"name" json:"name"`
-	Token        string     `bson:"token" json:"token"`
-	RequestCount uint64     `bson:"requestCount" json:"requestCount"`
-	Application  string     `bson:"application" json:"application"`
-	CreatedAt    time.Time  `bson:"createdAt" json:"createdAt"`
-	LastUsedAt   *time.Time `bson:"lastUsedAt" json:"lastUsedAt"`
-}
-
-type RequestLog struct {
-	ID           string    `bson:"_id" json:"_id"`
-	Application  string    `bson:"application" json:"application"`
-	Token        string    `bson:"token" json:"token"`
-	Timestamp    time.Time `bson:"timestamp" json:"timestamp"`
-	RequestCount int64     `bson:"requestCount" json:"requestCount"`
 }
 
 func (c *MongoDB) Connect(uri string) error {
@@ -122,6 +59,18 @@ func (c *MongoDB) Connect(uri string) error {
 	return nil
 }
 
+func (c *MongoDB) UpsertServerStatistics(filter, update bson.M) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+
+	defer cancel()
+
+	_, err := c.Database.Collection(CollectionServerStatistics).UpdateOne(ctx, filter, update, &options.UpdateOptions{
+		Upsert: PointerOf(true),
+	})
+
+	return err
+}
+
 func (c *MongoDB) GetNextUniqueServers() ([]*UniqueServer, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 
@@ -130,7 +79,7 @@ func (c *MongoDB) GetNextUniqueServers() ([]*UniqueServer, error) {
 	cur, err := c.Database.Collection(CollectionUniqueServers).Aggregate(ctx, []bson.M{
 		{
 			"$match": bson.M{
-				"lastPingedAt": bson.M{"$lte": time.Now().Add(-config.CycleInterval)},
+				// "lastPingedAt": bson.M{"$lte": time.Now().Add(-config.CycleInterval / 2)}, // TODO test if /2 is the solution
 				// TODO chunk by instance ID
 			},
 		},
